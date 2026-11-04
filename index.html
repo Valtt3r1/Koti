@@ -347,8 +347,24 @@ body {
   /* ---------- Electricity price ---------- */
   var prices = [], pricesAt = null, pricesErr = false;
 
+  // porssisahko.net may refuse requests made straight from a web page (CORS).
+  // If the direct request fails, try free public relays. The data is public,
+  // so nothing private passes through them. These are third-party services
+  // and can disappear; the lasting fix is a small server-side step.
+  var PRICE_RELAYS = [
+    function (u) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u); },
+    function (u) { return 'https://corsproxy.io/?url=' + encodeURIComponent(u); }
+  ];
+  function fetchPriceJSON() {
+    var p = getJSON(PRICE_URL);
+    PRICE_RELAYS.forEach(function (relay) {
+      p = p.catch(function () { return getJSON(relay(PRICE_URL)); });
+    });
+    return p;
+  }
+
   function loadPrices() {
-    return getJSON(PRICE_URL).then(function (j) {
+    return fetchPriceJSON().then(function (j) {
       var arr = Array.isArray(j) ? j : j.prices;
       var list = [];
       for (var i = 0; i < arr.length; i++) {
