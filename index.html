@@ -6,33 +6,30 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Koti">
-<meta name="theme-color" content="#0B1829">
+<meta name="theme-color" content="#070B1A">
 <title>Koti</title>
 <style>
 :root {
-  --bg: #0B1829;
-  --tile: #142840;
-  --tile-quiet: #10233A;
-  --ink: #EEF3F9;
-  --ink-2: #A3B5CA;
-  --ink-3: #6B8099;
-  --line: #25405E;
-  --lamp: #F5B84B;
-  --cheap: #3FD0A5;
-  --mid: #E9C85C;
-  --dear: #F2705B;
-  --rain: #7FB4E8;
+  --ink: #F5F8FC;
+  --ink-2: rgba(245, 248, 252, 0.66);
+  --ink-3: rgba(245, 248, 252, 0.42);
+  --hair: rgba(255, 255, 255, 0.10);
+  --glass: rgba(255, 255, 255, 0.055);
+  --glass-quiet: rgba(255, 255, 255, 0.04);
+  --lamp: #FFC46B;
+  --rain: #8CC4FF;
 }
 * { box-sizing: border-box; }
 html, body {
   margin: 0;
   height: 100%;
-  background: var(--bg);
+  background: #070B1A;
   color: var(--ink);
 }
 body {
-  font-family: "Avenir Next", "Avenir", "Helvetica Neue", system-ui, sans-serif;
+  font-family: -apple-system, "SF Pro Display", "Helvetica Neue", system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
   overflow: hidden;
   -webkit-user-select: none;
@@ -40,18 +37,65 @@ body {
   -webkit-touch-callout: none;
 }
 
-/* Layout: portrait stacks price and news full width, landscape uses two columns */
+/* ---------- Aurora backdrop ---------- */
+.sky {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  overflow: hidden;
+  background: #070B1A;
+}
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform;
+}
+.b1 {
+  width: 85vmax; height: 85vmax; top: -38vmax; left: -28vmax;
+  background: radial-gradient(closest-side, rgba(31, 211, 165, 0.40), rgba(31, 211, 165, 0));
+  animation: drift1 52s ease-in-out infinite alternate;
+}
+.b2 {
+  width: 90vmax; height: 90vmax; bottom: -52vmax; right: -34vmax;
+  background: radial-gradient(closest-side, rgba(52, 110, 255, 0.40), rgba(52, 110, 255, 0));
+  animation: drift2 64s ease-in-out infinite alternate;
+}
+.b3 {
+  width: 60vmax; height: 60vmax; top: 18vmax; left: 34vmax;
+  background: radial-gradient(closest-side, rgba(140, 94, 255, 0.28), rgba(140, 94, 255, 0));
+  animation: drift3 58s ease-in-out infinite alternate;
+}
+/* Ambient glow that follows the electricity price: green cheap, amber normal, coral expensive */
+.amb {
+  width: 64vmax; height: 64vmax; top: -22vmax; right: -24vmax;
+  opacity: 0;
+  transition: opacity 4s ease;
+  animation: drift2 70s ease-in-out infinite alternate;
+}
+.ambCheap { background: radial-gradient(closest-side, rgba(70, 230, 180, 0.42), rgba(70, 230, 180, 0)); }
+.ambMid { background: radial-gradient(closest-side, rgba(255, 190, 90, 0.36), rgba(255, 190, 90, 0)); }
+.ambDear { background: radial-gradient(closest-side, rgba(255, 110, 90, 0.42), rgba(255, 110, 90, 0)); }
+[data-level="cheap"] .ambCheap,
+[data-level="mid"] .ambMid,
+[data-level="dear"] .ambDear { opacity: 1; }
+
+@keyframes drift1 { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(14vmax, 10vmax, 0) scale(1.18); } }
+@keyframes drift2 { from { transform: translate3d(0, 0, 0) scale(1.1); } to { transform: translate3d(-12vmax, -9vmax, 0) scale(0.95); } }
+@keyframes drift3 { from { transform: translate3d(0, 0, 0) scale(0.9); } to { transform: translate3d(-10vmax, 8vmax, 0) scale(1.15); } }
+
+/* ---------- Layout ---------- */
 .board {
+  position: relative;
   height: 100%;
-  padding: 14px;
+  padding: 20px;
   display: grid;
-  gap: 14px;
+  gap: 18px;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   grid-template-rows: minmax(0, 0.85fr) minmax(0, 1.25fr) minmax(0, 1fr);
   grid-template-areas:
     "clock weather"
     "price price"
     "news news";
+  animation: appear 1.6s ease both;
 }
 @media (orientation: landscape) {
   .board {
@@ -62,119 +106,184 @@ body {
       "price news";
   }
 }
+@keyframes appear { from { opacity: 0; } to { opacity: 1; } }
 
+/* ---------- Glass ---------- */
 .tile {
-  background: var(--tile);
-  border-radius: 26px;
-  padding: 20px 22px;
+  position: relative;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(30px) saturate(170%);
+  backdrop-filter: blur(30px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 32px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 24px 60px rgba(0, 0, 0, 0.32);
+  padding: 24px 26px;
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
 }
-.tile.quiet { background: var(--tile-quiet); }
-.label { font-size: 15px; color: var(--ink-2); }
+.tile::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0) 38%);
+  pointer-events: none;
+}
+.tile > * { position: relative; }
+.tile.quiet { background: var(--glass-quiet); }
+.label { font-size: 15px; color: var(--ink-2); font-weight: 500; }
 .small { font-size: 15px; color: var(--ink-2); }
-.stamp { font-size: 13px; color: var(--ink-3); margin-left: auto; text-align: right; }
+.stamp { font-size: 12px; color: var(--ink-3); margin-left: auto; text-align: right; }
 .stamp.warn { color: var(--lamp); }
 
-/* Clock sits directly on the background, no tile */
+/* ---------- Clock (free-standing, no glass) ---------- */
 .clock {
   grid-area: clock;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 0 8px;
+  padding: 0 10px;
   min-width: 0;
   min-height: 0;
 }
 .time {
   font-size: 22vw;
   font-weight: 200;
-  line-height: 0.95;
-  letter-spacing: -0.02em;
+  line-height: 0.9;
+  letter-spacing: -0.045em;
   white-space: nowrap;
+  text-shadow: 0 0 48px rgba(140, 200, 255, 0.22);
 }
 @media (orientation: landscape) { .time { font-size: 17vw; } }
-.date { font-size: 26px; font-weight: 500; margin-top: 10px; }
+.colon {
+  display: inline-block;
+  margin: 0 0.015em;
+  position: relative;
+  top: -0.035em;
+  animation: breathe 2s ease-in-out infinite;
+}
+@keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.22; } }
+.date { font-size: 24px; font-weight: 500; margin-top: 14px; }
 .date .week { color: var(--ink-3); font-weight: 400; margin-left: 12px; }
-.sun { margin-top: 10px; font-size: 17px; color: var(--ink-2); line-height: 1.4; }
+.daybar {
+  position: relative;
+  height: 4px;
+  max-width: 440px;
+  margin-top: 18px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.13);
+  transition: opacity 1.5s;
+}
+.daybar.off { opacity: 0.35; }
+.daybar i {
+  position: absolute; top: 0; bottom: 0; left: 0;
+  width: 0;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #FFD98A, #FF9F6B);
+  transition: width 1.4s ease;
+}
+.daybar b {
+  position: absolute; top: 50%; left: 0;
+  width: 12px; height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 14px rgba(255, 214, 140, 0.95);
+  transition: left 1.4s ease;
+}
+.sun { margin-top: 12px; font-size: 16px; color: var(--ink-2); line-height: 1.45; }
 
-/* Weather */
+/* ---------- Weather ---------- */
 .weather { grid-area: weather; }
 .wTop { display: flex; align-items: center; gap: 14px; }
-.wIcon { font-size: 52px; line-height: 1; }
-.wTemp { font-size: 72px; font-weight: 300; line-height: 1; }
-.wDesc { font-size: 22px; font-weight: 500; margin-top: 6px; }
+.wIcon { font-size: 52px; line-height: 1; animation: float 7s ease-in-out infinite; }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.wTemp { font-size: 76px; font-weight: 200; line-height: 1; letter-spacing: -0.03em; }
+.wDesc { font-size: 22px; font-weight: 500; margin-top: 8px; }
 .wHours {
   display: flex;
   justify-content: space-between;
   margin-top: auto;
   padding-top: 12px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hair);
 }
 .wHours .h { text-align: center; flex: 1; }
-.wHours .t { font-size: 14px; color: var(--ink-3); }
+.wHours .t { font-size: 13px; color: var(--ink-3); }
 .wHours .i { font-size: 26px; line-height: 1.3; }
 .wHours .d { font-size: 19px; font-weight: 500; }
 .wHours .p { font-size: 13px; color: var(--rain); min-height: 16px; }
 .wFoot { display: flex; align-items: baseline; gap: 12px; margin-top: 10px; }
 
-/* Price */
+/* ---------- Electricity ---------- */
 .price { grid-area: price; }
 .priceHead { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
-.priceNow .big { font-size: 76px; font-weight: 300; line-height: 1; margin-top: 4px; white-space: nowrap; }
-.priceNow .unit { font-size: 20px; color: var(--ink-2); margin-left: 8px; font-weight: 400; }
-.num.cheap { color: var(--cheap); }
-.num.mid { color: var(--mid); }
-.num.dear { color: var(--dear); }
+.priceNow .big { font-size: 84px; font-weight: 200; line-height: 1; letter-spacing: -0.03em; margin-top: 4px; white-space: nowrap; }
+.priceNow .unit { font-size: 20px; color: var(--ink-2); margin-left: 10px; font-weight: 400; letter-spacing: 0; }
 .priceSide { text-align: right; }
 .badge {
   display: inline-block;
   font-size: 18px;
   font-weight: 600;
-  padding: 6px 16px;
+  padding: 7px 18px 7px 16px;
   border-radius: 999px;
-  background: rgba(163, 181, 202, 0.14);
-  color: var(--ink-2);
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  --c: rgba(245, 248, 252, 0.5);
 }
-.badge.cheap { background: rgba(63, 208, 165, 0.16); color: var(--cheap); }
-.badge.mid { background: rgba(233, 200, 92, 0.16); color: var(--mid); }
-.badge.dear { background: rgba(242, 112, 91, 0.16); color: var(--dear); }
-.priceSide .small { margin-top: 8px; }
-.chart { flex: 1; min-height: 0; margin: 10px 0 6px; }
+.badge::before {
+  content: "";
+  display: inline-block;
+  width: 9px; height: 9px;
+  margin-right: 10px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 0 12px var(--c);
+}
+.badge.cheap { --c: #4FE8B8; }
+.badge.mid { --c: #FFD25E; }
+.badge.dear { --c: #FF7A63; }
+.priceSide .small { margin-top: 10px; }
+.chart { flex: 1; min-height: 0; margin: 12px 0 6px; }
 .chart svg { display: block; width: 100%; height: 100%; }
-.bar.cheap { fill: var(--cheap); }
-.bar.mid { fill: var(--mid); }
-.bar.dear { fill: var(--dear); }
-.bar.past { opacity: 0.38; }
-.bar.now { stroke: var(--ink); stroke-width: 2.5; }
+.bar.past { opacity: 0.3; }
+.grow .bar {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: growUp 1s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.grow .bar.neg { transform-origin: 50% 0%; }
+@keyframes growUp { from { transform: scaleY(0); opacity: 0; } to { transform: scaleY(1); } }
+.ring { fill: none; stroke: rgba(255, 255, 255, 0.85); stroke-width: 1.5; animation: pulse 2.6s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 .axis { fill: var(--ink-3); font-size: 15px; text-anchor: middle; }
 .axis.nowLabel { fill: var(--lamp); font-weight: 600; }
 .axis.start { text-anchor: start; }
 .val { fill: var(--ink); font-size: 16px; font-weight: 600; text-anchor: middle; }
-.zero { stroke: var(--line); stroke-width: 1; }
-.midnight { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 3 5; }
-.priceFoot { display: flex; align-items: flex-end; gap: 28px; }
-.priceFoot .k { display: block; font-size: 14px; color: var(--ink-3); }
+.zero { stroke: rgba(255, 255, 255, 0.14); stroke-width: 1; }
+.midnight { stroke: rgba(255, 255, 255, 0.28); stroke-width: 1; stroke-dasharray: 2 6; }
+.priceFoot { display: flex; align-items: flex-end; gap: 30px; }
+.priceFoot .k { display: block; font-size: 13px; color: var(--ink-3); }
 .priceFoot .v { font-size: 20px; font-weight: 500; }
-.priceFoot .v small { font-size: 14px; color: var(--ink-2); font-weight: 400; margin-left: 4px; }
+.priceFoot .v small { font-size: 14px; color: var(--ink-2); font-weight: 400; margin-left: 5px; }
 
-/* News */
+/* ---------- News ---------- */
 .news { grid-area: news; }
 .newsHead { display: flex; align-items: baseline; gap: 12px; }
 .newsList {
   list-style: none;
-  margin: 12px 0 0;
+  margin: 10px 0 0;
   padding: 0;
   flex: 1;
   min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 12px;
 }
+.newsList li { padding: 11px 0; border-top: 1px solid var(--hair); }
+.newsList li:first-child { border-top: 0; padding-top: 4px; }
 .newsList .hl {
   font-size: 19px;
   font-weight: 500;
@@ -184,10 +293,10 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.newsList .ago { font-size: 13px; color: var(--ink-3); margin-top: 2px; }
-.newsList .empty { font-size: 17px; color: var(--ink-2); }
+.newsList .ago { font-size: 13px; color: var(--ink-3); margin-top: 3px; }
+.newsList .empty { font-size: 17px; color: var(--ink-2); border-top: 0; }
 
-/* Night dimming */
+/* ---------- Night and motion settings ---------- */
 #dim {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -197,14 +306,29 @@ body {
   transition: opacity 3s;
 }
 .night #dim { opacity: 0.5; }
+.night .blob { animation-play-state: paused; }
+.still *, .still *::before { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before { animation: none !important; transition: none !important; }
+}
 </style>
 </head>
 <body>
+<div class="sky" aria-hidden="true">
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+  <div class="blob b3"></div>
+  <div class="blob amb ambCheap"></div>
+  <div class="blob amb ambMid"></div>
+  <div class="blob amb ambDear"></div>
+</div>
+
 <main class="board">
 
   <section class="clock">
     <div class="time" id="time">--:--</div>
     <div class="date"><span id="date"></span><span class="week" id="week"></span></div>
+    <div class="daybar off" id="dayBar"><i id="dayFill"></i><b id="dayKnob"></b></div>
     <div class="sun" id="sun"></div>
   </section>
 
@@ -261,15 +385,18 @@ body {
     latitude: 60.17,            // Helsinki. Change to your own coordinates.
     longitude: 24.94,
     placeName: 'Helsinki',
-    priceLow: 6,                // c/kWh incl. VAT: at or below this the bar is green
-    priceHigh: 15,              // at or above this the bar is red
-    nightFrom: 22,              // screen dims between these hours
+    priceLow: 6,                // c/kWh incl. VAT: at or below this the price counts as cheap
+    priceHigh: 15,              // at or above this it counts as expensive
+    nightFrom: 22,              // screen dims between these hours (and the motion pauses)
     nightTo: 6,
+    motion: true,               // false = static glass, no animation (cooler and lighter on the iPad)
     newsFeed: 'https://yle.fi/rss/uutiset/paauutiset',
     newsMax: 6
   };
   var PRICE_URL = 'https://api.porssisahko.net/v2/latest-prices.json';
   var NEWS_PROXY = 'https://api.rss2json.com/v1/api.json?rss_url=';
+
+  if (!CONFIG.motion) { document.documentElement.className = 'still'; }
 
   /* ---------- Small helpers ---------- */
   function $(id) { return document.getElementById(id); }
@@ -331,9 +458,15 @@ body {
   }
 
   /* ---------- Clock ---------- */
+  var lastTime = '';
   function tickClock() {
     var d = new Date();
-    $('time').textContent = hhmm(d);
+    var t = hhmm(d);
+    if (t !== lastTime) {
+      // Only touch the DOM when the minute changes, so the colon animation is not restarted
+      lastTime = t;
+      $('time').innerHTML = t.slice(0, 2) + '<span class="colon">:</span>' + t.slice(3);
+    }
     var s = d.toLocaleDateString('fi-FI', { weekday: 'long', day: 'numeric', month: 'long' });
     $('date').textContent = s.charAt(0).toUpperCase() + s.slice(1);
     $('week').textContent = 'viikko ' + isoWeek(d);
@@ -345,7 +478,7 @@ body {
   }
 
   /* ---------- Electricity price ---------- */
-  var prices = [], pricesAt = null, pricesErr = false;
+  var prices = [], pricesAt = null, pricesErr = false, chartDrawn = false;
 
   // porssisahko.net may refuse requests made straight from a web page (CORS).
   // If the direct request fails, try free public relays. The data is public,
@@ -406,12 +539,14 @@ body {
 
   function renderPrice() {
     var now = new Date();
+    var root = document.documentElement;
     setStamp('pStamp', pricesAt, pricesErr);
     if (!prices.length) {
-      $('pNow').textContent = '--'; $('pNow').className = 'num';
+      $('pNow').textContent = '--';
       $('pBadge').textContent = pricesErr ? 'Ei hintoja' : 'Haetaan'; $('pBadge').className = 'badge';
       $('pNext').textContent = pricesErr ? 'Yritetään uudelleen' : '';
       $('chart').innerHTML = '';
+      root.removeAttribute('data-level');
       return;
     }
     var cur = null;
@@ -422,12 +557,13 @@ body {
     if (cur) {
       var lv = level(cur.price);
       $('pNow').textContent = fmt(cur.price, 1);
-      $('pNow').className = 'num ' + lv;
       $('pBadge').textContent = lv === 'cheap' ? 'Halpaa' : (lv === 'dear' ? 'Kallista' : 'Normaali');
       $('pBadge').className = 'badge ' + lv;
+      root.setAttribute('data-level', lv);
     } else {
-      $('pNow').textContent = '--'; $('pNow').className = 'num';
+      $('pNow').textContent = '--';
       $('pBadge').textContent = 'Hinnat vanhentuneet'; $('pBadge').className = 'badge';
+      root.removeAttribute('data-level');
     }
     var nx = slots[3];
     $('pNext').textContent = nx && nx.v !== null
@@ -461,8 +597,16 @@ body {
     var minV = Math.min.apply(null, vals.concat([0]));
     var range = maxV - minV;
     var zeroY = top + (maxV / range) * areaH;
-    var slotW = W / 24, bw = slotW * 0.74;
-    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">';
+    var slotW = W / 24, bw = slotW * 0.56;
+    var animate = !chartDrawn; // bars rise once, when the chart first appears
+    chartDrawn = true;
+    var s = '<svg class="' + (animate ? 'grow' : '') + '" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">';
+    s += '<defs>' +
+      '<linearGradient id="gCheap" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7DF5D2"/><stop offset="1" stop-color="#1FA987"/></linearGradient>' +
+      '<linearGradient id="gMid" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE794"/><stop offset="1" stop-color="#D9A233"/></linearGradient>' +
+      '<linearGradient id="gDear" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFA690"/><stop offset="1" stop-color="#DE4E37"/></linearGradient>' +
+      '</defs>';
+    var grad = { cheap: 'url(#gCheap)', mid: 'url(#gMid)', dear: 'url(#gDear)' };
     s += '<line class="zero" x1="0" x2="' + W + '" y1="' + zeroY.toFixed(1) + '" y2="' + zeroY.toFixed(1) + '"/>';
     for (var k = 0; k < slots.length; k++) {
       var sl = slots[k], x = k * slotW + (slotW - bw) / 2, hr = sl.t.getHours();
@@ -471,12 +615,16 @@ body {
         s += '<text class="axis start" x="' + (k * slotW + 5).toFixed(1) + '" y="16">huomenna</text>';
       }
       if (sl.v !== null) {
-        var h = Math.max(3, Math.abs(sl.v) / range * areaH);
+        var h = Math.max(4, Math.abs(sl.v) / range * areaH);
         var y = sl.v >= 0 ? zeroY - h : zeroY;
-        var cls = 'bar ' + level(sl.v) + (k < 2 ? ' past' : '') + (k === 2 ? ' now' : '');
-        s += '<rect class="' + cls + '" x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="5"/>';
+        var cls = 'bar' + (sl.v < 0 ? ' neg' : '') + (k < 2 ? ' past' : '');
+        var delay = animate ? ' style="animation-delay:' + (k * 28) + 'ms"' : '';
+        s += '<rect class="' + cls + '"' + delay + ' fill="' + grad[level(sl.v)] + '" x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="' + (bw / 2).toFixed(1) + '"/>';
+        if (k === 2) {
+          s += '<rect class="ring" x="' + (x - 3).toFixed(1) + '" y="' + (y - 3).toFixed(1) + '" width="' + (bw + 6).toFixed(1) + '" height="' + (h + 6).toFixed(1) + '" rx="' + ((bw + 6) / 2).toFixed(1) + '"/>';
+        }
         if (k === minI || k === maxI) {
-          var ly = (sl.v >= 0 ? y : zeroY) - 6;
+          var ly = (sl.v >= 0 ? y : zeroY) - 8;
           s += '<text class="val" x="' + (k * slotW + slotW / 2).toFixed(1) + '" y="' + ly.toFixed(1) + '">' + Math.round(sl.v) + '</text>';
         }
       }
@@ -598,12 +746,12 @@ body {
   }
 
   function renderSun() {
-    var el = $('sun');
-    if (!weather) { el.textContent = ''; return; }
+    var el = $('sun'), bar = $('dayBar');
+    if (!weather) { el.textContent = ''; bar.className = 'daybar off'; return; }
     var now = new Date();
     var today = weather.days[dateKey(now)];
     var yest = weather.days[dateKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1))];
-    if (!today) { el.textContent = ''; return; }
+    if (!today) { el.textContent = ''; bar.className = 'daybar off'; return; }
     var len = today.set - today.rise;
     var mins = Math.round(len / 60000);
     var line1 = 'Aurinko nousee ' + hhmm(today.rise) + ' ja laskee ' + hhmm(today.set);
@@ -617,6 +765,14 @@ body {
     var a = document.createElement('div'); a.textContent = line1;
     var b = document.createElement('div'); b.textContent = line2;
     el.appendChild(a); el.appendChild(b);
+
+    // Daylight progress line: where the sun is between sunrise and sunset
+    var p = (now - today.rise) / (today.set - today.rise);
+    var inDay = p >= 0 && p <= 1;
+    p = Math.max(0, Math.min(1, p));
+    $('dayFill').style.width = (p * 100) + '%';
+    $('dayKnob').style.left = (p * 100) + '%';
+    bar.className = 'daybar' + (inDay ? '' : ' off');
   }
 
   /* ---------- News (Yle RSS) ---------- */
