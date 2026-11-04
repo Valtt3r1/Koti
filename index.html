@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Koti">
+<meta name="theme-color" content="#0B1829">
+<title>Koti</title>
+<style>
+:root {
+  --bg: #0B1829;
+  --tile: #142840;
+  --tile-quiet: #10233A;
+  --ink: #EEF3F9;
+  --ink-2: #A3B5CA;
+  --ink-3: #6B8099;
+  --line: #25405E;
+  --lamp: #F5B84B;
+  --cheap: #3FD0A5;
+  --mid: #E9C85C;
+  --dear: #F2705B;
+  --rain: #7FB4E8;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+}
+body {
+  font-family: "Avenir Next", "Avenir", "Helvetica Neue", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  -webkit-text-size-adjust: 100%;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Layout: portrait stacks price and news full width, landscape uses two columns */
+.board {
+  height: 100%;
+  padding: 14px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 0.85fr) minmax(0, 1.25fr) minmax(0, 1fr);
+  grid-template-areas:
+    "clock weather"
+    "price price"
+    "news news";
+}
+@media (orientation: landscape) {
+  .board {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    grid-template-areas:
+      "clock weather"
+      "price news";
+  }
+}
+
+.tile {
+  background: var(--tile);
+  border-radius: 26px;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.tile.quiet { background: var(--tile-quiet); }
+.label { font-size: 15px; color: var(--ink-2); }
+.small { font-size: 15px; color: var(--ink-2); }
+.stamp { font-size: 13px; color: var(--ink-3); margin-left: auto; text-align: right; }
+.stamp.warn { color: var(--lamp); }
+
+/* Clock sits directly on the background, no tile */
+.clock {
+  grid-area: clock;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 8px;
+  min-width: 0;
+  min-height: 0;
+}
+.time {
+  font-size: 22vw;
+  font-weight: 200;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+@media (orientation: landscape) { .time { font-size: 17vw; } }
+.date { font-size: 26px; font-weight: 500; margin-top: 10px; }
+.date .week { color: var(--ink-3); font-weight: 400; margin-left: 12px; }
+.sun { margin-top: 10px; font-size: 17px; color: var(--ink-2); line-height: 1.4; }
+
+/* Weather */
+.weather { grid-area: weather; }
+.wTop { display: flex; align-items: center; gap: 14px; }
+.wIcon { font-size: 52px; line-height: 1; }
+.wTemp { font-size: 72px; font-weight: 300; line-height: 1; }
+.wDesc { font-size: 22px; font-weight: 500; margin-top: 6px; }
+.wHours {
+  display: flex;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.wHours .h { text-align: center; flex: 1; }
+.wHours .t { font-size: 14px; color: var(--ink-3); }
+.wHours .i { font-size: 26px; line-height: 1.3; }
+.wHours .d { font-size: 19px; font-weight: 500; }
+.wHours .p { font-size: 13px; color: var(--rain); min-height: 16px; }
+.wFoot { display: flex; align-items: baseline; gap: 12px; margin-top: 10px; }
+
+/* Price */
+.price { grid-area: price; }
+.priceHead { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
+.priceNow .big { font-size: 76px; font-weight: 300; line-height: 1; margin-top: 4px; white-space: nowrap; }
+.priceNow .unit { font-size: 20px; color: var(--ink-2); margin-left: 8px; font-weight: 400; }
+.num.cheap { color: var(--cheap); }
+.num.mid { color: var(--mid); }
+.num.dear { color: var(--dear); }
+.priceSide { text-align: right; }
+.badge {
+  display: inline-block;
+  font-size: 18px;
+  font-weight: 600;
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: rgba(163, 181, 202, 0.14);
+  color: var(--ink-2);
+}
+.badge.cheap { background: rgba(63, 208, 165, 0.16); color: var(--cheap); }
+.badge.mid { background: rgba(233, 200, 92, 0.16); color: var(--mid); }
+.badge.dear { background: rgba(242, 112, 91, 0.16); color: var(--dear); }
+.priceSide .small { margin-top: 8px; }
+.chart { flex: 1; min-height: 0; margin: 10px 0 6px; }
+.chart svg { display: block; width: 100%; height: 100%; }
+.bar.cheap { fill: var(--cheap); }
+.bar.mid { fill: var(--mid); }
+.bar.dear { fill: var(--dear); }
+.bar.past { opacity: 0.38; }
+.bar.now { stroke: var(--ink); stroke-width: 2.5; }
+.axis { fill: var(--ink-3); font-size: 15px; text-anchor: middle; }
+.axis.nowLabel { fill: var(--lamp); font-weight: 600; }
+.axis.start { text-anchor: start; }
+.val { fill: var(--ink); font-size: 16px; font-weight: 600; text-anchor: middle; }
+.zero { stroke: var(--line); stroke-width: 1; }
+.midnight { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 3 5; }
+.priceFoot { display: flex; align-items: flex-end; gap: 28px; }
+.priceFoot .k { display: block; font-size: 14px; color: var(--ink-3); }
+.priceFoot .v { font-size: 20px; font-weight: 500; }
+.priceFoot .v small { font-size: 14px; color: var(--ink-2); font-weight: 400; margin-left: 4px; }
+
+/* News */
+.news { grid-area: news; }
+.newsHead { display: flex; align-items: baseline; gap: 12px; }
+.newsList {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.newsList .hl {
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.newsList .ago { font-size: 13px; color: var(--ink-3); margin-top: 2px; }
+.newsList .empty { font-size: 17px; color: var(--ink-2); }
+
+/* Night dimming */
+#dim {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 3s;
+}
+.night #dim { opacity: 0.5; }
+</style>
+</head>
+<body>
+<main class="board">
+
+  <section class="clock">
+    <div class="time" id="time">--:--</div>
+    <div class="date"><span id="date"></span><span class="week" id="week"></span></div>
+    <div class="sun" id="sun"></div>
+  </section>
+
+  <section class="tile weather" id="tileWeather">
+    <div class="wTop">
+      <div class="wIcon" id="wIcon"></div>
+      <div class="wTemp" id="wTemp">--</div>
+    </div>
+    <div class="wDesc" id="wDesc">Haetaan säätä</div>
+    <div class="small" id="wMeta"></div>
+    <div class="wHours" id="wHours"></div>
+    <div class="wFoot">
+      <span class="small" id="wTomorrow"></span>
+      <span class="stamp" id="wStamp"></span>
+    </div>
+  </section>
+
+  <section class="tile price" id="tilePrice">
+    <div class="priceHead">
+      <div class="priceNow">
+        <div class="label">Pörssisähkö nyt</div>
+        <div class="big"><span class="num" id="pNow">--</span><span class="unit">c/kWh</span></div>
+      </div>
+      <div class="priceSide">
+        <div class="badge" id="pBadge">Haetaan</div>
+        <div class="small" id="pNext"></div>
+      </div>
+    </div>
+    <div class="chart" id="chart"></div>
+    <div class="priceFoot">
+      <div><span class="k">Halvin tunti</span><span class="v" id="pMin">--</span></div>
+      <div><span class="k">Kallein tunti</span><span class="v" id="pMax">--</span></div>
+      <span class="stamp" id="pStamp"></span>
+    </div>
+  </section>
+
+  <section class="tile quiet news" id="tileNews">
+    <div class="newsHead">
+      <span class="label">Yle Uutiset, pääuutiset</span>
+      <span class="stamp" id="nStamp"></span>
+    </div>
+    <ul class="newsList" id="newsList"></ul>
+  </section>
+
+</main>
+<div id="dim"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- Settings: change these ---------- */
+  var CONFIG = {
+    latitude: 60.17,            // Helsinki. Change to your own coordinates.
+    longitude: 24.94,
+    placeName: 'Helsinki',
+    priceLow: 6,                // c/kWh incl. VAT: at or below this the bar is green
+    priceHigh: 15,              // at or above this the bar is red
+    nightFrom: 22,              // screen dims between these hours
+    nightTo: 6,
+    newsFeed: 'https://yle.fi/rss/uutiset/paauutiset',
+    newsMax: 6
+  };
+  var PRICE_URL = 'https://api.porssisahko.net/v2/latest-prices.json';
+  var NEWS_PROXY = 'https://api.rss2json.com/v1/api.json?rss_url=';
+
+  /* ---------- Small helpers ---------- */
+  function $(id) { return document.getElementById(id); }
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function hhmm(d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function fmt(n, dec) {
+    return n.toLocaleString('fi-FI', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  }
+  function fmtTemp(t) {
+    var r = Math.round(t);
+    return (r < 0 ? '\u2212' : '') + Math.abs(r) + '\u00B0';
+  }
+  function dateKey(d) {
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+  function hourStart(d) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours());
+  }
+  // "2026-11-04T15:00" (no offset) as local time, safe on old Safari
+  function parseLocal(s) {
+    var m = String(s).match(/(\d+)-(\d+)-(\d+)T(\d+):(\d+)/);
+    return m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) : new Date(NaN);
+  }
+  function isoWeek(d) {
+    var t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    var day = t.getUTCDay() || 7;
+    t.setUTCDate(t.getUTCDate() + 4 - day);
+    var y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+    return Math.ceil(((t - y0) / 86400000 + 1) / 7);
+  }
+  function withTimeout(promise, ms) {
+    return new Promise(function (resolve, reject) {
+      var timer = setTimeout(function () { reject(new Error('timeout')); }, ms);
+      promise.then(function (v) { clearTimeout(timer); resolve(v); },
+                   function (e) { clearTimeout(timer); reject(e); });
+    });
+  }
+  function getJSON(url) {
+    return withTimeout(fetch(url).then(function (r) {
+      if (!r.ok) { throw new Error('HTTP ' + r.status); }
+      return r.json();
+    }), 12000);
+  }
+  function getText(url) {
+    return withTimeout(fetch(url).then(function (r) {
+      if (!r.ok) { throw new Error('HTTP ' + r.status); }
+      return r.text();
+    }), 12000);
+  }
+  function setStamp(id, date, err) {
+    var el = $(id), txt = '';
+    if (err) { txt = date ? 'Ei yhteyttä, tiedot klo ' + hhmm(date) : 'Ei yhteyttä'; }
+    else if (date) { txt = 'Päivitetty ' + hhmm(date); }
+    el.textContent = txt;
+    el.className = 'stamp' + (err ? ' warn' : '');
+  }
+  function level(v) {
+    return v <= CONFIG.priceLow ? 'cheap' : (v >= CONFIG.priceHigh ? 'dear' : 'mid');
+  }
+
+  /* ---------- Clock ---------- */
+  function tickClock() {
+    var d = new Date();
+    $('time').textContent = hhmm(d);
+    var s = d.toLocaleDateString('fi-FI', { weekday: 'long', day: 'numeric', month: 'long' });
+    $('date').textContent = s.charAt(0).toUpperCase() + s.slice(1);
+    $('week').textContent = 'viikko ' + isoWeek(d);
+    var h = d.getHours();
+    var night = CONFIG.nightFrom > CONFIG.nightTo
+      ? (h >= CONFIG.nightFrom || h < CONFIG.nightTo)
+      : (h >= CONFIG.nightFrom && h < CONFIG.nightTo);
+    document.body.className = night ? 'night' : '';
+  }
+
+  /* ---------- Electricity price ---------- */
+  var prices = [], pricesAt = null, pricesErr = false;
+
+  function loadPrices() {
+    return getJSON(PRICE_URL).then(function (j) {
+      var arr = Array.isArray(j) ? j : j.prices;
+      var list = [];
+      for (var i = 0; i < arr.length; i++) {
+        var p = arr[i];
+        var start = new Date(p.startDate);
+        var end = p.endDate ? new Date(p.endDate) : new Date(start.getTime() + 15 * 60000);
+        var price = Number(p.price);
+        if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && isFinite(price)) {
+          list.push({ start: start, end: end, price: price });
+        }
+      }
+      if (!list.length) { throw new Error('no prices'); }
+      list.sort(function (a, b) { return a.start - b.start; });
+      prices = list; pricesAt = new Date(); pricesErr = false;
+      renderPrice();
+      return true;
+    }).catch(function () {
+      pricesErr = true; renderPrice();
+      return false;
+    });
+  }
+
+  // 24 hourly slots: 2 hours back, the current hour, 21 hours ahead
+  function buildSlots(now) {
+    var first = hourStart(now).getTime() - 2 * 3600000;
+    var buckets = {};
+    for (var i = 0; i < prices.length; i++) {
+      var k = hourStart(prices[i].start).getTime();
+      var b = buckets[k] || (buckets[k] = { sum: 0, n: 0 });
+      b.sum += prices[i].price; b.n++;
+    }
+    var slots = [];
+    for (var s = 0; s < 24; s++) {
+      var t = first + s * 3600000, bk = buckets[t];
+      slots.push({ t: new Date(t), v: bk ? bk.sum / bk.n : null });
+    }
+    return slots;
+  }
+
+  function renderPrice() {
+    var now = new Date();
+    setStamp('pStamp', pricesAt, pricesErr);
+    if (!prices.length) {
+      $('pNow').textContent = '--'; $('pNow').className = 'num';
+      $('pBadge').textContent = pricesErr ? 'Ei hintoja' : 'Haetaan'; $('pBadge').className = 'badge';
+      $('pNext').textContent = pricesErr ? 'Yritetään uudelleen' : '';
+      $('chart').innerHTML = '';
+      return;
+    }
+    var cur = null;
+    for (var i = 0; i < prices.length; i++) {
+      if (prices[i].start <= now && now < prices[i].end) { cur = prices[i]; break; }
+    }
+    var slots = buildSlots(now);
+    if (cur) {
+      var lv = level(cur.price);
+      $('pNow').textContent = fmt(cur.price, 1);
+      $('pNow').className = 'num ' + lv;
+      $('pBadge').textContent = lv === 'cheap' ? 'Halpaa' : (lv === 'dear' ? 'Kallista' : 'Normaali');
+      $('pBadge').className = 'badge ' + lv;
+    } else {
+      $('pNow').textContent = '--'; $('pNow').className = 'num';
+      $('pBadge').textContent = 'Hinnat vanhentuneet'; $('pBadge').className = 'badge';
+    }
+    var nx = slots[3];
+    $('pNext').textContent = nx && nx.v !== null
+      ? 'Klo ' + pad(nx.t.getHours()) + ' alkaen ' + fmt(nx.v, 1) + ' c/kWh'
+      : '';
+
+    // Cheapest and most expensive hour from now onwards
+    var minI = -1, maxI = -1;
+    for (var s = 2; s < slots.length; s++) {
+      if (slots[s].v === null) { continue; }
+      if (minI < 0 || slots[s].v < slots[minI].v) { minI = s; }
+      if (maxI < 0 || slots[s].v > slots[maxI].v) { maxI = s; }
+    }
+    function stat(idx) {
+      if (idx < 0) { return '--'; }
+      return 'klo ' + pad(slots[idx].t.getHours()) + '<small>' + fmt(slots[idx].v, 1) + ' c</small>';
+    }
+    $('pMin').innerHTML = stat(minI);
+    $('pMax').innerHTML = stat(maxI);
+    drawChart(slots, minI, maxI);
+  }
+
+  function drawChart(slots, minI, maxI) {
+    var wrap = $('chart');
+    var cw = wrap.clientWidth || 720, ch = wrap.clientHeight || 240;
+    var W = 720, H = Math.max(150, Math.round(W * ch / cw));
+    var top = 24, bottom = 26, areaH = H - top - bottom;
+    var vals = [];
+    for (var i = 0; i < slots.length; i++) { if (slots[i].v !== null) { vals.push(slots[i].v); } }
+    var maxV = Math.max.apply(null, vals.concat([1]));
+    var minV = Math.min.apply(null, vals.concat([0]));
+    var range = maxV - minV;
+    var zeroY = top + (maxV / range) * areaH;
+    var slotW = W / 24, bw = slotW * 0.74;
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">';
+    s += '<line class="zero" x1="0" x2="' + W + '" y1="' + zeroY.toFixed(1) + '" y2="' + zeroY.toFixed(1) + '"/>';
+    for (var k = 0; k < slots.length; k++) {
+      var sl = slots[k], x = k * slotW + (slotW - bw) / 2, hr = sl.t.getHours();
+      if (hr === 0 && k > 0) {
+        s += '<line class="midnight" x1="' + (k * slotW).toFixed(1) + '" x2="' + (k * slotW).toFixed(1) + '" y1="' + top + '" y2="' + (H - bottom) + '"/>';
+        s += '<text class="axis start" x="' + (k * slotW + 5).toFixed(1) + '" y="16">huomenna</text>';
+      }
+      if (sl.v !== null) {
+        var h = Math.max(3, Math.abs(sl.v) / range * areaH);
+        var y = sl.v >= 0 ? zeroY - h : zeroY;
+        var cls = 'bar ' + level(sl.v) + (k < 2 ? ' past' : '') + (k === 2 ? ' now' : '');
+        s += '<rect class="' + cls + '" x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="5"/>';
+        if (k === minI || k === maxI) {
+          var ly = (sl.v >= 0 ? y : zeroY) - 6;
+          s += '<text class="val" x="' + (k * slotW + slotW / 2).toFixed(1) + '" y="' + ly.toFixed(1) + '">' + Math.round(sl.v) + '</text>';
+        }
+      }
+      var cx = (k * slotW + slotW / 2).toFixed(1);
+      if (k === 2) {
+        s += '<text class="axis nowLabel" x="' + cx + '" y="' + (H - 6) + '">nyt</text>';
+      } else if (hr % 3 === 0 && k !== 1 && k !== 3) {
+        s += '<text class="axis" x="' + cx + '" y="' + (H - 6) + '">' + pad(hr) + '</text>';
+      }
+    }
+    s += '</svg>';
+    wrap.innerHTML = s;
+  }
+
+  /* ---------- Weather (Open-Meteo) ---------- */
+  var weather = null, weatherAt = null, weatherErr = false;
+
+  var WX_TEXT = {
+    0: 'Selkeää', 1: 'Enimmäkseen selkeää', 2: 'Puolipilvistä', 3: 'Pilvistä',
+    45: 'Sumua', 48: 'Huurtavaa sumua', 51: 'Heikkoa tihkua', 53: 'Tihkua', 55: 'Runsasta tihkua',
+    56: 'Jäätävää tihkua', 57: 'Jäätävää tihkua', 61: 'Heikkoa sadetta', 63: 'Sadetta',
+    65: 'Runsasta sadetta', 66: 'Jäätävää sadetta', 67: 'Jäätävää sadetta',
+    71: 'Heikkoa lumisadetta', 73: 'Lumisadetta', 75: 'Runsasta lumisadetta', 77: 'Lumijyväsiä',
+    80: 'Heikkoja sadekuuroja', 81: 'Sadekuuroja', 82: 'Voimakkaita sadekuuroja',
+    85: 'Lumikuuroja', 86: 'Runsaita lumikuuroja', 95: 'Ukkosta', 96: 'Ukkosta ja rakeita', 99: 'Ukkosta ja rakeita'
+  };
+  function wxIcon(code, day) {
+    if (code === 0 || code === 1) { return day ? '\u2600\uFE0F' : '\uD83C\uDF19'; }
+    if (code === 2) { return day ? '\u26C5' : '\u2601\uFE0F'; }
+    if (code === 3) { return '\u2601\uFE0F'; }
+    if (code === 45 || code === 48) { return '\uD83C\uDF2B\uFE0F'; }
+    if (code >= 51 && code <= 57) { return '\uD83C\uDF26\uFE0F'; }
+    if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) { return '\uD83C\uDF27\uFE0F'; }
+    if ((code >= 71 && code <= 77) || code === 85 || code === 86) { return '\u2744\uFE0F'; }
+    if (code >= 95) { return '\u26C8\uFE0F'; }
+    return '\uD83C\uDF21\uFE0F';
+  }
+
+  function loadWeather() {
+    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + CONFIG.latitude +
+      '&longitude=' + CONFIG.longitude +
+      '&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,is_day' +
+      '&hourly=temperature_2m,precipitation_probability,weather_code' +
+      '&daily=sunrise,sunset,temperature_2m_max,temperature_2m_min' +
+      '&wind_speed_unit=ms&timezone=auto&past_days=1&forecast_days=2';
+    return getJSON(url).then(function (j) {
+      var hours = [], days = {}, i;
+      for (i = 0; i < j.hourly.time.length; i++) {
+        hours.push({
+          t: parseLocal(j.hourly.time[i]),
+          temp: j.hourly.temperature_2m[i],
+          pop: j.hourly.precipitation_probability[i],
+          code: j.hourly.weather_code[i]
+        });
+      }
+      for (i = 0; i < j.daily.time.length; i++) {
+        days[j.daily.time[i]] = {
+          rise: parseLocal(j.daily.sunrise[i]),
+          set: parseLocal(j.daily.sunset[i]),
+          max: j.daily.temperature_2m_max[i],
+          min: j.daily.temperature_2m_min[i]
+        };
+      }
+      weather = { cur: j.current, hours: hours, days: days };
+      weatherAt = new Date(); weatherErr = false;
+      renderWeather(); renderSun();
+      return true;
+    }).catch(function () {
+      weatherErr = true; renderWeather(); renderSun();
+      return false;
+    });
+  }
+
+  function isDay(d) {
+    var dd = weather && weather.days[dateKey(d)];
+    return dd ? (d >= dd.rise && d < dd.set) : true;
+  }
+
+  function renderWeather() {
+    setStamp('wStamp', weatherAt, weatherErr);
+    if (!weather) {
+      $('wIcon').textContent = ''; $('wTemp').textContent = '--';
+      $('wDesc').textContent = weatherErr ? 'Säätä ei saatu' : 'Haetaan säätä';
+      $('wMeta').textContent = weatherErr ? 'Yritetään uudelleen' : '';
+      $('wHours').innerHTML = ''; $('wTomorrow').textContent = '';
+      return;
+    }
+    var now = new Date(), c = weather.cur;
+    $('wIcon').textContent = wxIcon(c.weather_code, c.is_day === 1);
+    $('wTemp').textContent = fmtTemp(c.temperature_2m);
+    $('wDesc').textContent = WX_TEXT[c.weather_code] || '';
+    $('wMeta').textContent = CONFIG.placeName + ', tuntuu ' + fmtTemp(c.apparent_temperature) +
+      ', tuuli ' + Math.round(c.wind_speed_10m) + ' m/s';
+
+    var hs = hourStart(now).getTime(), idx = -1, i;
+    for (i = 0; i < weather.hours.length; i++) {
+      if (weather.hours[i].t.getTime() >= hs) { idx = i; break; }
+    }
+    var box = $('wHours');
+    box.innerHTML = '';
+    if (idx >= 0) {
+      for (var step = 2; step <= 10; step += 2) {
+        var hr = weather.hours[idx + step];
+        if (!hr) { break; }
+        var col = document.createElement('div'); col.className = 'h';
+        var t = document.createElement('div'); t.className = 't'; t.textContent = 'klo ' + pad(hr.t.getHours());
+        var ic = document.createElement('div'); ic.className = 'i'; ic.textContent = wxIcon(hr.code, isDay(hr.t));
+        var d = document.createElement('div'); d.className = 'd'; d.textContent = fmtTemp(hr.temp);
+        var p = document.createElement('div'); p.className = 'p';
+        p.textContent = (hr.pop !== null && hr.pop !== undefined && hr.pop >= 20) ? hr.pop + ' %' : '';
+        col.appendChild(t); col.appendChild(ic); col.appendChild(d); col.appendChild(p);
+        box.appendChild(col);
+      }
+    }
+    var tom = weather.days[dateKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1))];
+    $('wTomorrow').textContent = tom
+      ? 'Huomenna ylin ' + fmtTemp(tom.max) + ', alin ' + fmtTemp(tom.min)
+      : '';
+  }
+
+  function renderSun() {
+    var el = $('sun');
+    if (!weather) { el.textContent = ''; return; }
+    var now = new Date();
+    var today = weather.days[dateKey(now)];
+    var yest = weather.days[dateKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1))];
+    if (!today) { el.textContent = ''; return; }
+    var len = today.set - today.rise;
+    var mins = Math.round(len / 60000);
+    var line1 = 'Aurinko nousee ' + hhmm(today.rise) + ' ja laskee ' + hhmm(today.set);
+    var line2 = 'Päivän pituus ' + Math.floor(mins / 60) + ' h ' + (mins % 60) + ' min';
+    if (yest) {
+      var delta = Math.round((len - (yest.set - yest.rise)) / 60000);
+      if (delta > 0) { line2 += ', ' + delta + ' min pidempi kuin eilen'; }
+      else if (delta < 0) { line2 += ', ' + Math.abs(delta) + ' min lyhyempi kuin eilen'; }
+    }
+    el.innerHTML = '';
+    var a = document.createElement('div'); a.textContent = line1;
+    var b = document.createElement('div'); b.textContent = line2;
+    el.appendChild(a); el.appendChild(b);
+  }
+
+  /* ---------- News (Yle RSS) ---------- */
+  var news = [], newsAt = null, newsErr = false;
+
+  function parseRss(text) {
+    var doc = new DOMParser().parseFromString(text, 'text/xml');
+    var nodes = doc.querySelectorAll('item'), out = [];
+    for (var i = 0; i < nodes.length; i++) {
+      var t = nodes[i].querySelector('title'), d = nodes[i].querySelector('pubDate');
+      if (t && t.textContent) {
+        out.push({ title: t.textContent.trim(), date: d ? new Date(d.textContent) : null });
+      }
+    }
+    if (!out.length) { throw new Error('empty feed'); }
+    return out;
+  }
+  function viaProxy() {
+    return getJSON(NEWS_PROXY + encodeURIComponent(CONFIG.newsFeed)).then(function (j) {
+      if (j.status !== 'ok' || !j.items || !j.items.length) { throw new Error('proxy'); }
+      return j.items.map(function (it) {
+        return { title: String(it.title).trim(), date: new Date(String(it.pubDate).replace(' ', 'T') + 'Z') };
+      });
+    });
+  }
+  function loadNews() {
+    // Try the feed directly first. If the browser blocks it (CORS), use the proxy.
+    return getText(CONFIG.newsFeed).then(parseRss).catch(viaProxy).then(function (items) {
+      news = items; newsAt = new Date(); newsErr = false;
+      renderNews();
+      return true;
+    }).catch(function () {
+      newsErr = true; renderNews();
+      return false;
+    });
+  }
+  function ago(d) {
+    if (!d || isNaN(d.getTime())) { return ''; }
+    var m = Math.round((Date.now() - d.getTime()) / 60000);
+    if (m < 1) { return 'juuri nyt'; }
+    if (m < 60) { return m + ' min sitten'; }
+    if (m < 1440) { return Math.round(m / 60) + ' h sitten'; }
+    return Math.round(m / 1440) + ' pv sitten';
+  }
+  function renderNews() {
+    var ul = $('newsList');
+    ul.innerHTML = '';
+    setStamp('nStamp', newsAt, newsErr);
+    if (!news.length) {
+      var e = document.createElement('li'); e.className = 'empty';
+      e.textContent = newsErr ? 'Uutisia ei saatu. Yritetään uudelleen.' : 'Haetaan uutisia';
+      ul.appendChild(e);
+      return;
+    }
+    for (var i = 0; i < Math.min(news.length, CONFIG.newsMax); i++) {
+      var li = document.createElement('li');
+      var hl = document.createElement('div'); hl.className = 'hl'; hl.textContent = news[i].title;
+      var ag = document.createElement('div'); ag.className = 'ago'; ag.textContent = ago(news[i].date);
+      li.appendChild(hl); li.appendChild(ag);
+      ul.appendChild(li);
+    }
+    fitNews();
+  }
+  // Hide headlines that do not fit, so nothing is cut in half
+  function fitNews() {
+    var ul = $('newsList'), items = ul.children, i;
+    for (i = 0; i < items.length; i++) { items[i].style.display = ''; }
+    for (i = items.length - 1; i > 0 && ul.scrollHeight > ul.clientHeight + 1; i--) {
+      items[i].style.display = 'none';
+    }
+  }
+
+  /* ---------- Start ---------- */
+  function every(loader, okMs, failMs) {
+    (function run() {
+      loader().then(function (ok) { setTimeout(run, ok ? okMs : failMs); });
+    })();
+  }
+
+  tickClock();
+  renderPrice(); renderWeather(); renderSun(); renderNews();
+  setInterval(tickClock, 1000);
+  setInterval(function () { renderPrice(); renderWeather(); renderSun(); renderNews(); }, 60000);
+  every(loadPrices, 10 * 60000, 60000);
+  every(loadWeather, 15 * 60000, 2 * 60000);
+  every(loadNews, 20 * 60000, 2 * 60000);
+
+  window.addEventListener('resize', function () { renderPrice(); fitNews(); });
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) { loadPrices(); loadWeather(); loadNews(); }
+  });
+})();
+</script>
+</body>
+</html>
